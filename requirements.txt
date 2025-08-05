@@ -1,6 +1,3 @@
-googletrans==4.0.0-rc1
-deep-translator
-gtts
-streamlit
-openai-whisper
-torch
+streamlit==1.28.0
+openai-whisper==20231117
+torch==2.2.0
