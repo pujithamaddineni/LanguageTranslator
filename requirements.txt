@@ -4,3 +4,9 @@ torch
 numpy
 pydub
 soundfile
+googletrans==4.0.0rc1
+deep-translator
+gtts
+SpeechRecognition
+langdetect
+playsound
