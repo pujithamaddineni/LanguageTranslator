@@ -11,9 +11,9 @@ import base64
 ui_languages = {
     "English": "en", "French": "fr", "Spanish": "es", "German": "de", "Chinese": "zh-CN",
     "Japanese": "ja", "Korean": "ko", "Russian": "ru", "Arabic": "ar", "Portuguese": "pt",
-    "Italian": "it", "Turkish": "tr", "Hindi": "hi", "Telugu": "te", "Tamil": "ta",
-    "Kannada": "kn", "Malayalam": "ml", "Marathi": "mr", "Gujarati": "gu", "Bengali": "bn",
-    "Punjabi": "pa", "Urdu": "ur", "Odia": "or", "Assamese": "as"
+    "Italian": "it", "tr": "Turkish", "hi": "Hindi", "te": "Telugu", "ta": "Tamil",
+    "kn": "Kannada", "ml": "Malayalam", "mr": "Marathi", "gu": "Gujarati", "bn": "Bengali",
+    "pa": "Punjabi", "ur": "Urdu", "or": "Odia", "as": "Assamese"
 }
 
 # Configure page
@@ -26,19 +26,35 @@ selected_option = st.radio("Choose an option:", options, horizontal=True)
 
 # Translators
 translator = Translator()
+# Note: The `LANGUAGES` dictionary from googletrans is what you want to use for this,
+# but the key-value pairs are swapped. Let's fix that for easier lookup.
 target_languages = {name.capitalize(): code for code, name in LANGUAGES.items()}
 
-# TTS playback
+# TTS playback with improved temporary file handling
 def speak(text, lang_code):
-    tts = gTTS(text=text, lang=lang_code)
-    path = "temp_tts.mp3"
-    tts.save(path)
-    with open(path, "rb") as f:
-        audio = f.read()
-        b64 = base64.b64encode(audio).decode()
+    try:
+        # Use tempfile to create a temporary file with a unique name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
+            path = temp_file.name
+            tts = gTTS(text=text, lang=lang_code)
+            tts.save(path)
+
+        # Read the file and create a base64 string for download
+        with open(path, "rb") as f:
+            audio = f.read()
+            b64 = base64.b64encode(audio).decode()
+            
+        # Provide the audio player and download link
         st.audio(audio, format="audio/mp3")
         st.markdown(f'<a href="data:audio/mp3;base64,{b64}" download="speech.mp3">📥 Download Audio</a>', unsafe_allow_html=True)
-    os.remove(path)
+        
+    except Exception as e:
+        st.error(f"TTS Error: {e}")
+    finally:
+        # Ensure the temporary file is deleted
+        if 'path' in locals() and os.path.exists(path):
+            os.remove(path)
+
 
 # --- TEXT TRANSLATION ---
 if selected_option == "Text":
@@ -64,14 +80,14 @@ elif selected_option == "Speech - Text":
 
     audio_file = st.file_uploader("Upload a WAV audio file:", type=["wav"])
     if audio_file:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
-            temp_audio.write(audio_file.read())
-            temp_audio_path = temp_audio.name
-    
         try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
+                temp_audio.write(audio_file.read())
+                temp_audio_path = temp_audio.name
+        
             with st.spinner("Processing audio..."):
                 model = whisper.load_model("tiny")
-                result = model.transcribe(temp_audio_path, fp16=False)  # Disable GPU-only mode
+                result = model.transcribe(temp_audio_path, fp16=False)
                 recognized_text = result["text"]
                 st.success("Recognized Speech:")
                 st.text_area("Extracted Text:", recognized_text, height=150)
@@ -85,7 +101,9 @@ elif selected_option == "Speech - Text":
         except Exception as e:
             st.error(f"Error recognizing speech: {str(e)}")
         finally:
-            os.remove(temp_audio_path)
+            # Ensure the temporary audio file is deleted
+            if 'temp_audio_path' in locals() and os.path.exists(temp_audio_path):
+                os.remove(temp_audio_path)
 
 
 # --- TEXT TO SPEECH TRANSLATION ---
