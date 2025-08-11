@@ -59,31 +59,27 @@ if selected_option == "Text":
 
 # --- SPEECH TO TEXT TRANSLATION ---
 elif selected_option == "Speech - Text":
-    st.subheader("Speech-to-Text Translation")
+    st.subheader("Speech-to-Text Translation (WAV only)")
+    target_language = st.selectbox("Select target language:", options=target_languages.keys())
 
-    # Load Whisper tiny model for lightweight deployment
-    model = whisper.load_model("tiny")  # Use "tiny" for better compatibility with Streamlit Cloud
-
-    target_language = st.selectbox("Select target language:", options=target_languages.keys(), key="speech_lang")
-    
     audio_file = st.file_uploader("Upload a WAV audio file:", type=["wav"])
-    
     if audio_file:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
             temp_audio.write(audio_file.read())
             temp_audio_path = temp_audio.name
-        
+    
         try:
             with st.spinner("Processing audio..."):
-                result = model.transcribe(temp_audio_path)
+                model = whisper.load_model("tiny")
+                result = model.transcribe(temp_audio_path, fp16=False)  # Disable GPU-only mode
                 recognized_text = result["text"]
                 st.success("Recognized Speech:")
                 st.text_area("Extracted Text:", recognized_text, height=150)
-                
+
                 translated_text = translator.translate(recognized_text, dest=target_languages[target_language]).text
                 st.success("Translated Text:")
                 st.markdown(f"<p style='font-size: 20px; color: #4CAF50;'>{translated_text}</p>", unsafe_allow_html=True)
-                
+
                 st.download_button("Download Transcribed Text", recognized_text, file_name="transcribed_text.txt")
                 st.download_button("Download Translated Text", translated_text, file_name="translated_text.txt")
         except Exception as e:
