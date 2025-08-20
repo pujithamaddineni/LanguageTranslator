@@ -1,6 +1,8 @@
 streamlit
+faster-whisper
+soundfile
+resampy
+numpy
 googletrans==4.0.0-rc1
-deep_translator
 gTTS
-openai-whisper
-pydub
+deep-translator
